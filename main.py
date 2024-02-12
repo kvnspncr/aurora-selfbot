@@ -30,13 +30,6 @@ prefix = f"{bot_prefix}"
 bot = commands.Bot(command_prefix=prefix, self_bot=True, help_command=None)
 token = f"{bot_token}"
 
-#todo 
-#implement more stuff or something idk 
-#improve code
-#improve stuff
-#finish impersonation func
-#implement more stuff
-
 async def thread(ctx, name):
     channel_id = ctx.channel.id 
     url = f"https://discord.com/api/v9/channels/{channel_id}/threads"
