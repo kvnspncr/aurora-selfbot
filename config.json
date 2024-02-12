@@ -1,0 +1,7 @@
+{
+  "token": "foo",
+  "uid": 12345,
+  "webhook": "bar",
+  "prefix": ">",
+  "webhook_id": 12345
+}
