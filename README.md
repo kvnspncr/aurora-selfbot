@@ -6,5 +6,5 @@
 <h2>Functionality</h2>
 <p>The bot has a lot of recon commands, malicious commands and fun commands just like the paid bots, you can spam raid servers impersonate other users and more.</p>
 <hr>
-<h2>Bootstrap</h2>
+<h2>Oneliner for setup</h2>
 <code>git clone https://github.com/kvnspncr/aurora-selfbot && cd $(pwd)/aurora-selfbot && pip install -r requirements.txt && chmod +x start.sh</code>
