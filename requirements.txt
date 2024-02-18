@@ -1,0 +1,8 @@
+art==6.1
+beautifulsoup4==4.12.3
+discord.py-self
+duckduckgo_search==4.1.1
+openai==1.12.0
+Requests==2.31.0
+selenium==4.17.2
+tls_client==0.2.2
