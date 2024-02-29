@@ -1,3 +1,5 @@
+#stolen from stack overflow but modified to work as a library
+
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
